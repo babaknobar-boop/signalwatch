@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>SignalWatch × TradingView</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'JetBrains Mono','Courier New',monospace;background:#0b0e14;color:#c9d1d9;min-height:100vh}
+:root{
+  --g:#00c853;--r:#ff1744;--y:#ffab00;--b:#2979ff;
+  --bg0:#0b0e14;--bg1:#10141c;--bg2:#161c27;--bg3:#1c2333;
+  --bdr:rgba(48,64,96,0.7);--mu:#5a6a80;
+  --gd:rgba(0,200,83,0.12);--rd:rgba(255,23,68,0.12);--yd:rgba(255,171,0,0.12)
+}
+#app{max-width:1440px;margin:0 auto;padding:16px}
+
+/* HEADER */
+.hdr{display:flex;align-items:center;justify-content:space-between;padding:12px 0 18px;border-bottom:1px solid var(--bdr);margin-bottom:18px;flex-wrap:wrap;gap:10px}
+.logo{font-size:17px;font-weight:700;color:#fff;letter-spacing:-0.5px}.logo b{color:var(--g)}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--g);box-shadow:0 0 7px var(--g);animation:pu 2s infinite}
+@keyframes pu{0%,100%{opacity:1}50%{opacity:.3}}
+.badge{font-size:10px;color:var(--g);border:1px solid var(--g);padding:2px 7px;border-radius:4px}
+.warn{background:rgba(255,171,0,.07);border:1px solid rgba(255,171,0,.3);border-radius:8px;padding:8px 14px;font-size:11px;color:#ffab00;margin-bottom:15px}
+
+/* CONTROLS */
+.ctrl{display:flex;gap:8px;margin-bottom:15px;flex-wrap:wrap}
+.ctrl input{flex:1;min-width:180px;background:var(--bg2);border:1px solid var(--bdr);border-radius:8px;padding:9px 13px;color:#c9d1d9;font-family:inherit;font-size:12px;outline:none}
+.ctrl input:focus{border-color:var(--b)}
+.btn{background:var(--b);border:none;border-radius:8px;padding:9px 16px;color:#fff;font-size:12px;font-family:inherit;cursor:pointer;white-space:nowrap;transition:opacity .15s}
+.btn:hover{opacity:.82}
+.btn-sm{padding:6px 12px;font-size:11px}
+.btn-g{background:rgba(0,200,83,.15)!important;color:var(--g)!important;border:1px solid rgba(0,200,83,.35)!important}
+.btn-g:hover{background:rgba(0,200,83,.25)!important;opacity:1!important}
+.btn-ghost{background:var(--bg3)!important;border:1px solid var(--bdr)!important;color:var(--mu)!important}
+.sel{background:var(--bg2);border:1px solid var(--bdr);border-radius:8px;padding:9px 12px;color:#c9d1d9;font-family:inherit;font-size:12px;outline:none;cursor:pointer}
+
+/* CHIPS */
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:18px}
+.chip{display:flex;align-items:center;gap:5px;background:var(--bg2);border:1px solid var(--bdr);border-radius:20px;padding:4px 11px;font-size:11px;cursor:pointer;transition:all .12s;user-select:none}
+.chip:hover{border-color:var(--b);color:#fff}
+.chip.analyzed{border-color:rgba(41,121,255,.5);background:rgba(41,121,255,.08);color:#fff}
+.chip .x{color:var(--mu);margin-left:2px;font-size:13px}.chip .x:hover{color:var(--r)}
+
+/* TABS */
+.tabs{display:flex;gap:2px;margin-bottom:18px;border-bottom:1px solid var(--bdr)}
+.tab{padding:8px 15px;font-size:11px;cursor:pointer;color:var(--mu);border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .12s}
+.tab.on{color:var(--b);border-bottom-color:var(--b)}
+.tab:hover:not(.on){color:#c9d1d9}
+.acnt{background:rgba(255,23,68,.2);color:#ff5252;border-radius:3px;padding:1px 5px;font-size:10px;margin-left:4px}
+
+/* CARDS GRID */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:14px}
+
+/* CARD */
+.card{background:var(--bg1);border:1px solid var(--bdr);border-radius:12px;overflow:hidden;position:relative}
+.card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px}
+.card.bull::before{background:var(--g)}.card.bear::before{background:var(--r)}.card.neut::before{background:var(--y)}
+.card-top{display:flex;align-items:center;justify-content:space-between;padding:13px 15px 10px}
+.sym-name{font-size:17px;font-weight:700;color:#fff}
+.sym-sub{font-size:10px;color:var(--mu);margin-top:1px}
+.sig-badge{font-size:11px;font-weight:700;padding:4px 10px;border-radius:6px}
+.sig-badge.bull{background:var(--gd);color:var(--g)}
+.sig-badge.bear{background:var(--rd);color:#ff5252}
+.sig-badge.neut{background:var(--yd);color:var(--y)}
+
+/* TF TABS inside card */
+.tf-tabs{display:flex;gap:3px;padding:0 15px 10px;flex-wrap:wrap}
+.tft{font-size:10px;padding:3px 8px;border-radius:5px;cursor:pointer;border:1px solid var(--bdr);color:var(--mu);transition:all .12s}
+.tft:hover{color:#fff;border-color:var(--mu)}
+.tft.on{border-color:var(--b);color:var(--b);background:rgba(41,121,255,.1)}
+
+/* TV widget area */
+.tv-frame{width:100%;border-radius:8px;overflow:hidden;border:1px solid var(--bdr)}
+
+/* METRICS */
+.metrics{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;padding:0 15px 10px}
+.met{background:var(--bg3);border-radius:8px;padding:8px 10px}
+.met-l{font-size:10px;color:var(--mu);margin-bottom:2px}
+.met-v{font-size:13px;font-weight:600;color:#fff}
+.met-v.g{color:var(--g)}.met-v.r{color:#ff5252}.met-v.y{color:var(--y)}
+
+/* AI NOTE */
+.ai-note{margin:0 15px 12px;background:var(--bg2);border:1px solid var(--bdr);border-radius:8px;padding:10px 12px;font-size:11px;color:#8b949e;line-height:1.65}
+.ai-label{font-size:10px;color:var(--b);font-weight:600;margin-bottom:4px;letter-spacing:.05em}
+
+/* TV link */
+.tv-link{display:inline-flex;align-items:center;gap:5px;font-size:10px;color:var(--b);text-decoration:none;padding:3px 8px;border:1px solid rgba(41,121,255,.3);border-radius:4px;margin:0 15px 10px;transition:background .12s}
+.tv-link:hover{background:rgba(41,121,255,.1)}
+
+/* CARD ACTIONS */
+.card-actions{padding:0 15px 14px;display:flex;gap:6px;flex-wrap:wrap}
+
+/* HEATMAP */
+.hm-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:11px;min-width:700px}
+th{padding:7px 10px;color:var(--mu);font-weight:500;text-align:center;border-bottom:1px solid var(--bdr);white-space:nowrap}
+th:first-child{text-align:left}
+td{padding:7px 10px;border-bottom:1px solid rgba(48,64,96,.3);text-align:center}
+td:first-child{text-align:left;font-weight:700;color:#fff;cursor:pointer}
+td:first-child:hover{color:var(--b)}
+tr:hover td{background:rgba(255,255,255,.015)}
+.hc{display:inline-block;border-radius:4px;padding:2px 8px;font-size:10px;font-weight:700}
+.hc.b{background:rgba(0,200,83,.18);color:#00c853}
+.hc.s{background:rgba(255,23,68,.18);color:#ff5252}
+.hc.n{background:rgba(255,171,0,.15);color:#ffab00}
+.sp{display:inline-block;border-radius:4px;padding:3px 8px;font-size:11px;font-weight:700}
+.sp.s1{background:rgba(0,200,83,.25);color:#00e676}
+.sp.s2{background:rgba(0,200,83,.15);color:#69f0ae}
+.sp.s3{background:rgba(255,171,0,.15);color:#ffab00}
+.sp.s4{background:rgba(255,23,68,.12);color:#ff5252}
+
+/* ALERTS */
+.alts{display:flex;flex-direction:column;gap:6px}
+.alt{display:flex;align-items:center;gap:10px;background:var(--bg1);border:1px solid var(--bdr);border-radius:8px;padding:9px 14px;font-size:11px}
+.ald{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.ald.g{background:var(--g)}.ald.r{background:#ff5252}.ald.y{background:var(--y)}
+.alt-t{margin-left:auto;color:var(--mu);font-size:10px;white-space:nowrap}
+
+/* MODAL */
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:999;display:flex;align-items:center;justify-content:center;padding:20px}
+.modal-box{background:var(--bg1);border:1px solid var(--bdr);border-radius:16px;width:100%;max-width:880px;max-height:90vh;overflow:auto;padding:20px}
+.modal-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.modal-hdr h2{font-size:16px;color:#fff}
+.close-btn{background:none;border:none;color:var(--mu);font-size:24px;cursor:pointer;line-height:1}
+.close-btn:hover{color:#fff}
+
+/* LOADING */
+.spinner{display:inline-block;width:12px;height:12px;border:1.5px solid var(--bdr);border-top-color:var(--b);border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:6px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-bar{position:fixed;top:0;left:0;right:0;height:2px;background:var(--b);z-index:1000;animation:lb 2s ease-in-out infinite}
+@keyframes lb{0%{width:0;opacity:1}80%{width:90%;opacity:1}100%{width:100%;opacity:0}}
+
+.hidden{display:none!important}
+.empty{color:var(--mu);font-size:12px;padding:24px;text-align:center}
+.sec-title{font-size:11px;font-weight:600;color:var(--mu);letter-spacing:.08em;text-transform:uppercase;margin-bottom:12px}
+
+/* STATUS bar */
+.status-bar{display:flex;align-items:center;gap:12px;font-size:11px;color:var(--mu);padding:8px 0;margin-bottom:10px;border-bottom:1px solid rgba(48,64,96,.4)}
+.status-bar span{display:flex;align-items:center;gap:5px}
+</style>
+</head>
+<body>
+<div id="loading-bar" class="loading-bar hidden"></div>
+<div id="app">
+
+  <div class="hdr">
+    <div style="display:flex;align-items:center;gap:10px">
+      <div class="dot"></div>
+      <div class="logo">SIGNAL<b>WATCH</b> <span style="font-size:11px;color:var(--mu);font-weight:400">× TradingView</span></div>
+      <div class="badge">LIVE</div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <span style="font-size:11px;color:var(--mu)" id="upd-time">Not yet updated</span>
+      <button class="btn btn-sm btn-g" onclick="analyzeAll()">⚡ AI Analyze All</button>
+      <button class="btn btn-sm btn-ghost" onclick="openModal('SPY','1D')">📊 SPY Chart</button>
+    </div>
+  </div>
+
+  <div class="warn">⚠ For educational and informational purposes only. Not financial advice. TradingView signals are automated indicator readings. Always do your own research before trading.</div>
+
+  <div class="ctrl">
+    <input id="sym-in" placeholder="Add symbol: AAPL, BTC, GLD, TSLA..." onkeydown="if(event.key==='Enter')addSym()"/>
+    <button class="btn" onclick="addSym()">+ Add</button>
+    <select class="sel" onchange="loadPreset(this.value)" id="preset-sel">
+      <option value="">Load preset...</option>
+      <option value="default">My Watchlist</option>
+      <option value="crypto">Crypto</option>
+      <option value="commodities">Commodities</option>
+      <option value="etfs">ETFs &amp; Indices</option>
+    </select>
+    <button class="btn btn-sm btn-ghost" onclick="clearAll()">Clear all</button>
+  </div>
+
+  <div class="chips" id="chips"></div>
+
+  <div class="status-bar">
+    <span>Symbols: <b id="sym-count" style="color:#fff">0</b></span>
+    <span>Analyzed: <b id="ana-count" style="color:var(--g)">0</b></span>
+    <span>Alerts: <b id="alt-count" style="color:var(--y)">0</b></span>
+    <span id="api-status" style="margin-left:auto"></span>
+  </div>
+
+  <div class="tabs">
+    <div class="tab on" onclick="setTab('cards',this)">Cards + TradingView</div>
+    <div class="tab" onclick="setTab('heatmap',this)">AI Heatmap</div>
+    <div class="tab" onclick="setTab('alerts',this)">Alerts <span class="acnt" id="acnt"></span></div>
+  </div>
+
+  <!-- CARDS -->
+  <div id="tab-cards">
+    <div class="grid" id="cards-grid">
+      <div class="empty">Load a preset or add symbols above, then click "AI Analyze All".</div>
+    </div>
+  </div>
+
+  <!-- HEATMAP -->
+  <div id="tab-heatmap" class="hidden">
+    <div class="hm-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Symbol</th>
+            <th>1m</th><th>5m</th><th>15m</th><th>30m</th>
+            <th>1h</th><th>4h</th><th>1D</th><th>1W</th><th>1M</th>
+            <th>Score</th><th>Signal</th><th>Risk</th>
+          </tr>
+        </thead>
+        <tbody id="hm-body"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ALERTS -->
+  <div id="tab-alerts" class="hidden">
+    <div class="sec-title">Active Alerts</div>
+    <div class="alts" id="alts-list">
+      <div class="empty">No alerts yet. Analyze symbols to generate alerts.</div>
+    </div>
+  </div>
+
+</div>
+
+<!-- MODAL -->
+<div class="modal hidden" id="tv-modal">
+  <div class="modal-box">
+    <div class="modal-hdr">
+      <h2 id="modal-title">Chart</h2>
+      <button class="close-btn" onclick="closeModal()">×</button>
+    </div>
+    <div id="modal-body"></div>
+  </div>
+</div>
+
+<script>
+// ─── CONFIG ───────────────────────────────────────────────────────────────────
+// In production this points to your Railway backend.
+// For local dev it auto-detects.
+const API_BASE = window.location.hostname === 'localhost'
+  ? 'http://localhost:8000'
+  : 'https://YOUR-RAILWAY-APP.up.railway.app'; // ← replace after Railway deploy
+
+const TFS = ['1m','5m','15m','30m','1h','4h','1D','1W','1M'];
+const TV_TF = {'1m':'1','5m':'5','15m':'15','30m':'30','1h':'60','4h':'240','1D':'1D','1W':'1W','1M':'1M'};
+
+const TV_SYM = {
+  'BTC':'BITSTAMP:BTCUSD','ETH':'BITSTAMP:ETHUSD','SOL':'BINANCE:SOLUSDT',
+  'BNB':'BINANCE:BNBUSDT','AVAX':'BINANCE:AVAXUSDT','LINK':'BINANCE:LINKUSDT',
+  'GOLD':'XAUUSD','SILVER':'XAGUSD','OIL':'TVC:USOIL','GUSH':'AMEX:GUSH',
+  'GLD':'AMEX:GLD','SLV':'AMEX:SLV','USO':'AMEX:USO',
+  'BTCUSD':'BITSTAMP:BTCUSD','ETHUSD':'BITSTAMP:ETHUSD',
+  'UBER':'NYSE:UBER','TSLA':'NASDAQ:TSLA','HIVE':'NASDAQ:HIVE',
+  'SPY':'AMEX:SPY','QQQ':'NASDAQ:QQQ','IWM':'AMEX:IWM',
+  'TLT':'NASDAQ:TLT','ARKK':'AMEX:ARKK'
+};
+
+const PRESETS = {
+  default: ['UBER','TSLA','HIVE','GLD','SLV','USO','GUSH','SPY','QQQ','BTC'],
+  crypto:  ['BTC','ETH','SOL','BNB','AVAX','LINK'],
+  commodities: ['GLD','SLV','USO','GUSH','GOLD','SILVER','OIL'],
+  etfs:    ['SPY','QQQ','IWM','GLD','TLT','ARKK']
+};
+
+let watchlist = [];
+let aiData = {};
+let alerts = [];
+let cardTF = {};
+
+// ─── UTILS ───────────────────────────────────────────────────────────────────
+function tvSym(s){ return TV_SYM[s] || s; }
+
+function sigCls(s){
+  if(!s) return 'neut';
+  const l = s.toLowerCase();
+  if(l.includes('bull')||l.includes('buy')) return 'bull';
+  if(l.includes('bear')||l.includes('sell')) return 'bear';
+  return 'neut';
+}
+
+function metColor(val){
+  const c = sigCls(val);
+  return c==='bull'?'g':c==='bear'?'r':'y';
+}
+
+function scoreSpan(sc){
+  if(!sc && sc!==0) return '—';
+  const cls = sc>=80?'s1':sc>=60?'s2':sc>=40?'s3':'s4';
+  return `<span class="sp ${cls}">${sc}</span>`;
+}
+
+function hmCell(sig){
+  if(!sig) return `<span style="color:var(--mu)">···</span>`;
+  const c = sigCls(sig);
+  const m = {bull:'b',bear:'s',neut:'n'};
+  const l = {bull:'▲ B',bear:'▼ S',neut:'◆ N'};
+  return `<span class="hc ${m[c]}">${l[c]}</span>`;
+}
+
+function showLoader(){ document.getElementById('loading-bar').classList.remove('hidden'); }
+function hideLoader(){ document.getElementById('loading-bar').classList.add('hidden'); }
+
+function updateStatusBar(){
+  document.getElementById('sym-count').textContent = watchlist.length;
+  document.getElementById('ana-count').textContent = Object.keys(aiData).length;
+  document.getElementById('alt-count').textContent = alerts.length;
+}
+
+// ─── TAB SWITCHING ────────────────────────────────────────────────────────────
+function setTab(t, el){
+  document.querySelectorAll('.tab').forEach(x => x.classList.remove('on'));
+  el.classList.add('on');
+  ['cards','heatmap','alerts'].forEach(n => {
+    document.getElementById('tab-'+n).classList.toggle('hidden', n!==t);
+  });
+}
+
+// ─── WATCHLIST MANAGEMENT ─────────────────────────────────────────────────────
+function addSym(s){
+  const inp = document.getElementById('sym-in');
+  const v = (s||inp.value).trim().toUpperCase().replace(/[^A-Z0-9.]/g,'');
+  if(!v || watchlist.includes(v)){ inp.value=''; return; }
+  watchlist.push(v);
+  cardTF[v] = '1D';
+  inp.value = '';
+  renderAll();
+}
+
+function removeSym(s){
+  watchlist = watchlist.filter(x=>x!==s);
+  delete aiData[s]; delete cardTF[s];
+  renderAll();
+}
+
+function clearAll(){
+  watchlist=[]; aiData={}; cardTF={}; alerts=[];
+  renderAll();
+}
+
+function loadPreset(k){
+  if(!k) return;
+  watchlist = [...PRESETS[k]];
+  aiData={}; cardTF={};
+  watchlist.forEach(s=>{ cardTF[s]='1D'; });
+  document.getElementById('preset-sel').value='';
+  renderAll();
+}
+
+// ─── TRADINGVIEW EMBED BUILDERS ───────────────────────────────────────────────
+function tvTechWidget(sym, tf, height=240){
+  const ts = tvSym(sym);
+  const tvtf = TV_TF[tf]||'1D';
+  return `<div class="tv-frame" style="height:${height}px">
+    <div class="tradingview-widget-container" style="height:100%;width:100%">
+      <div style="height:100%;width:100%"></div>
+      <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-technical-analysis.js" async>
+      {"interval":"${tvtf}","width":"100%","isTransparent":true,"height":${height},"symbol":"${ts}","showIntervalTabs":true,"displayMode":"single","locale":"en","colorTheme":"dark"}
+      <\/script>
+    </div>
+  </div>`;
+}
+
+function tvChartWidget(sym, tf='1D', height=460){
+  const ts = tvSym(sym);
+  const tvtf = TV_TF[tf]||'1D';
+  return `<div class="tradingview-widget-container" style="height:${height}px;width:100%">
+    <div class="tradingview-widget-container__widget" style="height:100%;width:100%"></div>
+    <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js" async>
+    {"autosize":true,"symbol":"${ts}","interval":"${tvtf}","timezone":"America/New_York","theme":"dark","style":"1","locale":"en","enable_publishing":false,"hide_top_toolbar":false,"hide_legend":false,"save_image":false,"calendar":false,"support_host":"https://www.tradingview.com"}
+    <\/script>
+  </div>`;
+}
+
+// ─── TF SELECTOR ──────────────────────────────────────────────────────────────
+function selectTF(sym, tf){
+  cardTF[sym] = tf;
+  const wrap = document.getElementById('tvwrap_'+sym);
+  if(wrap) wrap.innerHTML = tvTechWidget(sym, tf, 240);
+  document.querySelectorAll('#tftabs_'+sym+' .tft').forEach(b=>{
+    b.classList.toggle('on', b.dataset.tf===tf);
+  });
+}
+
+// ─── RENDER ───────────────────────────────────────────────────────────────────
+function renderAll(){ renderChips(); renderCards(); renderHeatmap(); renderAlerts(); updateStatusBar(); }
+
+function renderChips(){
+  document.getElementById('chips').innerHTML = watchlist.map(s=>`
+    <div class="chip ${aiData[s]?'analyzed':''}" onclick="analyzeOne('${s}')">
+      ${s}
+      <span class="x" onclick="event.stopPropagation();removeSym('${s}')">×</span>
+    </div>`).join('');
+}
+
+function renderCards(){
+  const g = document.getElementById('cards-grid');
+  if(!watchlist.length){
+    g.innerHTML='<div class="empty">Load a preset or add symbols above.</div>'; return;
+  }
+  g.innerHTML = watchlist.map(sym=>{
+    const d = aiData[sym];
+    const cls = d ? sigCls(d.signal) : 'neut';
+    const tf = cardTF[sym]||'1D';
+    const score = d?.score||0;
+    const barCol = score>=60?'var(--g)':score>=40?'var(--y)':'#ff5252';
+
+    return `<div class="card ${cls}" id="card_${sym}">
+      <div class="card-top">
+        <div>
+          <div class="sym-name">${sym}</div>
+          <div class="sym-sub">${d?.assetType||'Click Analyze'} · Best TF: ${d?.bestTF||'—'}</div>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">
+          <span class="sig-badge ${cls}">${d?.signal||'—'}</span>
+          ${d?`<span style="font-size:10px;color:var(--mu)">Risk: <span style="color:${d.risk==='High'?'#ff5252':d.risk==='Low'?'var(--g)':'var(--y)'}">${d.risk}</span></span>`:''}
+        </div>
+      </div>
+
+      ${d?`<div style="padding:0 15px 10px">
+        <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--mu);margin-bottom:5px">
+          <span>AI Confidence</span>
+          <span style="color:${barCol};font-weight:700">${score}%</span>
+        </div>
+        <div style="height:5px;background:var(--bg3);border-radius:3px;overflow:hidden">
+          <div style="height:100%;width:${score}%;background:${barCol};border-radius:3px;transition:width .8s ease"></div>
+        </div>
+      </div>`:''}
+
+      <div class="tf-tabs" id="tftabs_${sym}">
+        ${TFS.map(t=>`<div class="tft ${t===tf?'on':''}" data-tf="${t}" onclick="selectTF('${sym}','${t}')">${t}</div>`).join('')}
+      </div>
+
+      <div style="padding:0 15px 10px">
+        <div id="tvwrap_${sym}">${tvTechWidget(sym,tf,240)}</div>
+      </div>
+
+      <a class="tv-link" href="https://www.tradingview.com/chart/?symbol=${tvSym(sym)}" target="_blank" rel="noopener">
+        ↗ Open full chart on TradingView
+      </a>
+
+      ${d?`<div class="metrics">
+        <div class="met"><div class="met-l">Short-term</div><div class="met-v ${metColor(d.shortTerm)}">${d.shortTerm||'—'}</div></div>
+        <div class="met"><div class="met-l">Swing</div><div class="met-v ${metColor(d.swing)}">${d.swing||'—'}</div></div>
+        <div class="met"><div class="met-l">Long-term</div><div class="met-v ${metColor(d.longTerm)}">${d.longTerm||'—'}</div></div>
+      </div>
+
+      <div class="metrics" style="padding-top:0">
+        <div class="met"><div class="met-l">Intraday</div><div class="met-v ${metColor(d.intraday)}">${d.intraday||'—'}</div></div>
+        <div class="met"><div class="met-l">Horizon</div><div class="met-v">${d.horizon||'—'}</div></div>
+        <div class="met"><div class="met-l">Trend</div><div class="met-v ${metColor(d.currentTrend)}">${d.currentTrend||'—'}</div></div>
+      </div>
+
+      <div class="ai-note">
+        <div class="ai-label">AI ANALYSIS</div>
+        ${d.note||'—'}
+      </div>`
+      :`<div class="ai-note">
+        <div class="ai-label">AI ANALYSIS</div>
+        <span style="color:var(--mu)"><span class="spinner"></span>Click chip or "AI Analyze" to analyze</span>
+      </div>`}
+
+      <div class="card-actions">
+        <button class="btn btn-sm btn-g" onclick="analyzeOne('${sym}')">↻ AI Analyze</button>
+        <button class="btn btn-sm btn-ghost" onclick="openModal('${sym}','${tf}')">📊 Full Chart</button>
+        <a href="https://www.tradingview.com/chart/?symbol=${tvSym(sym)}" target="_blank" rel="noopener" style="text-decoration:none">
+          <button class="btn btn-sm btn-ghost">↗ TradingView</button>
+        </a>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderHeatmap(){
+  const body = document.getElementById('hm-body');
+  if(!watchlist.length){
+    body.innerHTML='<tr><td colspan="13" class="empty">Add symbols above</td></tr>'; return;
+  }
+  body.innerHTML = watchlist.map(sym=>{
+    const d = aiData[sym];
+    if(!d) return `<tr>
+      <td onclick="analyzeOne('${sym}')" title="Click to analyze">
+        ${sym} <span style="color:var(--b);font-size:10px">analyze →</span>
+      </td>
+      ${TFS.map(()=>'<td style="color:var(--mu)">···</td>').join('')}
+      <td>—</td><td>—</td><td>—</td>
+    </tr>`;
+    return `<tr>
+      <td onclick="openModal('${sym}','1D')">${sym}</td>
+      ${TFS.map(tf=>`<td>${hmCell(d.timeframes[tf])}</td>`).join('')}
+      <td>${scoreSpan(d.score)}</td>
+      <td><span class="hc ${sigCls(d.signal)==='bull'?'b':sigCls(d.signal)==='bear'?'s':'n'}">${d.signal||'—'}</span></td>
+      <td style="font-size:10px;color:${d.risk==='High'?'#ff5252':d.risk==='Low'?'var(--g)':'var(--y)'}">${d.risk||'—'}</td>
+    </tr>`;
+  }).join('');
+}
+
+function renderAlerts(){
+  const list = document.getElementById('alts-list');
+  const cnt = document.getElementById('acnt');
+  if(!alerts.length){
+    list.innerHTML='<div class="empty">No alerts yet. Analyze symbols to generate alerts.</div>';
+    cnt.textContent=''; return;
+  }
+  cnt.textContent = alerts.length;
+  list.innerHTML = alerts.slice(-40).reverse().map(a=>`
+    <div class="alt">
+      <div class="ald ${a.type}"></div>
+      <span>${a.msg}</span>
+      <span class="alt-t">${a.time}</span>
+    </div>`).join('');
+}
+
+// ─── AI API CALLS ─────────────────────────────────────────────────────────────
+async function analyzeOne(sym){
+  await runAI([sym]);
+}
+
+async function analyzeAll(){
+  if(!watchlist.length) return;
+  // Batch in groups of 5 to avoid timeout
+  const batches = [];
+  for(let i=0;i<watchlist.length;i+=5) batches.push(watchlist.slice(i,i+5));
+  for(const batch of batches) await runAI(batch);
+}
+
+async function runAI(syms){
+  showLoader();
+  document.getElementById('api-status').innerHTML = `<span class="spinner"></span>Analyzing ${syms.join(', ')}...`;
+  try {
+    const res = await fetch(`${API_BASE}/analyze`, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ symbols: syms })
+    });
+    if(!res.ok){
+      const err = await res.json().catch(()=>({detail:'Server error'}));
+      throw new Error(err.detail||'Server error '+res.status);
+    }
+    const data = await res.json();
+    data.results.forEach(item => {
+      aiData[item.symbol] = item;
+      (item.alerts||[]).forEach(msg => {
+        const type = msg.toLowerCase().includes('sell')||msg.toLowerCase().includes('bear')
+          ? 'r' : msg.toLowerCase().includes('buy')||msg.toLowerCase().includes('bull') ? 'g' : 'y';
+        alerts.push({ msg:`${item.symbol}: ${msg}`, type, time: new Date().toLocaleTimeString() });
+      });
+    });
+    document.getElementById('upd-time').textContent = 'Updated ' + new Date().toLocaleTimeString();
+    document.getElementById('api-status').textContent = '✓ Analysis complete';
+    setTimeout(()=>{ document.getElementById('api-status').textContent=''; }, 3000);
+    renderAll();
+  } catch(e) {
+    document.getElementById('api-status').innerHTML = `<span style="color:#ff5252">⚠ ${e.message}</span>`;
+    console.error('API error:', e);
+  } finally {
+    hideLoader();
+  }
+}
+
+// ─── MODAL ────────────────────────────────────────────────────────────────────
+function openModal(sym, tf){
+  tf = tf || cardTF[sym] || '1D';
+  document.getElementById('modal-title').textContent = `${sym} — Advanced Chart (${tf})`;
+  document.getElementById('modal-body').innerHTML = tvChartWidget(sym, tf, 500);
+  document.getElementById('tv-modal').classList.remove('hidden');
+}
+
+function closeModal(){
+  document.getElementById('tv-modal').classList.add('hidden');
+  document.getElementById('modal-body').innerHTML='';
+}
+
+document.getElementById('tv-modal').addEventListener('click', function(e){
+  if(e.target === this) closeModal();
+});
+
+// ─── BOOT ─────────────────────────────────────────────────────────────────────
+loadPreset('default');
+</script>
+</body>
+</html>
